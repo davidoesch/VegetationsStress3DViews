@@ -30,6 +30,7 @@
     --accent-ink: #ffffff;
     --wash: rgba(0, 0, 0, 0.05);
     --band-opacity: 0.24;
+    --water: #1d5fa6;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -45,6 +46,7 @@
       --accent-ink: #121413;
       --wash: rgba(255, 255, 255, 0.06);
       --band-opacity: 0.16;
+      --water: #7db4f0;
       color-scheme: dark;
     }
   }
@@ -60,6 +62,7 @@
     --accent-ink: #121413;
     --wash: rgba(255, 255, 255, 0.06);
     --band-opacity: 0.16;
+    --water: #7db4f0;
     color-scheme: dark;
   }
 
@@ -172,11 +175,28 @@
   }
   .cube-label.corner { color: var(--muted); transform: translateY(14px); }
   .cube-label.north { color: var(--ink); font-weight: 600; }
+  .cube-label.name {
+    color: var(--ink); text-shadow: 0 0 2px var(--surface), 0 0 3px var(--surface), 0 0 5px var(--surface);
+  }
+  .cube-label.place { font-weight: 650; font-size: 12px; }
+  .cube-label.area { font-style: italic; }
+  .cube-label.water { font-style: italic; color: var(--water); }
+  .cube-label.terrain::before { content: "▲ "; font-size: 8px; }
+  .cube-label.road, .cube-label.other { color: var(--ink-2); font-size: 10.5px; }
   .empty {
     position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
     color: var(--muted); padding: 24px; pointer-events: none;
   }
   .empty[hidden] { display: none; }
+  .overlay-ctl {
+    position: absolute; top: 12px; right: 12px; z-index: 4; display: flex; align-items: center; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px; font-size: 12px;
+  }
+  .overlay-ctl[hidden] { display: none; }
+  .overlay-ctl span { color: var(--muted); padding: 0 6px 0 4px; }
+  .overlay-ctl button { padding: 3px 9px; border-color: transparent; }
+  .overlay-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .overlay-attr { position: absolute; right: 12px; bottom: 8px; font-size: 10.5px; color: var(--muted); pointer-events: none; }
   .empty strong { display: block; color: var(--ink-2); font-size: 15px; margin-bottom: 4px; }
 
   .charts { border-top: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
@@ -321,6 +341,8 @@
     <div class="cube" id="cube">
       <div class="empty" id="cube-empty"><div><strong>No cube loaded</strong>Choose an area and a period, then press “Load cube”.<br>Drag to rotate, scroll to zoom, right-drag to pan. Hover for values, click a cell for its history.</div></div>
       <div class="tip" id="cube-tip" hidden></div>
+      <div class="overlay-ctl" id="overlay-ctl" role="group" aria-label="Map overlay on the top face" hidden><span>Overlay</span></div>
+      <div class="overlay-attr" id="overlay-attr" hidden></div>
     </div>
     <div class="charts">
       <div class="tabs" role="tablist">

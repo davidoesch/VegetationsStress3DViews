@@ -3,6 +3,7 @@ import { CLASSES, CLASS_OF, ALL_MASK, STRESS_MASK, NODATA } from './classes.js';
 import { COLLECTIONS, listItems, sample } from './stac.js';
 import { planGrid, createVolume, loadVolume, classShares } from './loader.js';
 import { renderPixelChart, renderAreaChart } from './chart.js';
+import { OVERLAYS, ATTRIBUTION, fetchNames, fetchRoads } from './overlay.js';
 
 const { L, proj4 } = window;
 proj4.defs('EPSG:2056', '+proj=somerc +lat_0=46.9524055555556 +lon_0=7.43958333333333 +k_0=1 '
@@ -16,18 +17,24 @@ const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyV
 
 const FIRST_10M_DATE = '2017-04-03';
 const MAX_VOXELS = 64e6;
-const KB_PER_TILE = 60; // typical compressed 512×512 forest tile
+// Measured on a forested 5 × 3 km area: ~560 KB per date for 4 tiles plus the COG header.
+const KB_PER_TILE = 125;
+const KB_PER_HEADER = 64;
 const DEFAULT_HEIGHT = 0.7;
+const DEFAULT_OVERLAYS = ['names'];
 
+// LV95 bboxes [e0, n0, e1, n1].
 const PRESETS = [
-  { name: 'Pfynwald (VS)', e: 2612700, n: 1127300, w: 5000, h: 3000 },
-  { name: 'Ajoie, Porrentruy (JU)', e: 2572600, n: 1251900, w: 6000, h: 5000 },
-  { name: 'Sihlwald (ZH)', e: 2684600, n: 1236300, w: 4000, h: 4000 },
+  { name: 'La Neuville', bbox: [2570570, 1212120, 2573150, 1214400] },
+  { name: 'Ittigen', bbox: [2603040, 1203270, 2603880, 1204030] },
+  { name: 'Pfynwald (VS)', bbox: [2610200, 1125800, 2615200, 1128800] },
+  { name: 'Ajoie, Porrentruy (JU)', bbox: [2569600, 1249400, 2575600, 1254400] },
+  { name: 'Sihlwald (ZH)', bbox: [2682600, 1234300, 2686600, 1238300] },
 ];
 
 const state = {
   bbox: null, items: null, itemsOk: false, vol: null, shares: null,
-  mask: ALL_MASK, pin: null, tab: 'pixel', abort: null,
+  mask: ALL_MASK, pin: null, tab: 'pixel', abort: null, overlays: [...DEFAULT_OVERLAYS],
 };
 
 const cube = new Cube($('cube'));
@@ -74,7 +81,7 @@ for (const k of ['e0', 'n0', 'e1', 'n1']) {
 for (const p of PRESETS) $('preset').add(new Option(p.name, p.name));
 $('preset').addEventListener('change', (e) => {
   const p = PRESETS.find((x) => x.name === e.target.value);
-  if (p) setBbox({ e0: p.e - p.w / 2, e1: p.e + p.w / 2, n0: p.n - p.h / 2, n1: p.n + p.h / 2 }, { fit: true });
+  if (p) setBbox({ e0: p.bbox[0], n0: p.bbox[1], e1: p.bbox[2], n1: p.bbox[3] }, { fit: true });
   e.target.value = '';
 });
 
@@ -172,7 +179,8 @@ async function refreshInfo() {
   if (from < FIRST_10M_DATE) warnings.push(`FOREST-10M starts on ${FIRST_10M_DATE}.`);
   if (!items.length) warnings.push('No FOREST-10M data in this period.');
   if (plan && items.length) {
-    parts.push(`≈ ${Math.max(1, Math.round((items.length * plan.tiles * KB_PER_TILE) / 1024))} MB to download`);
+    const kb = items.length * (KB_PER_HEADER + plan.tiles * KB_PER_TILE);
+    parts.push(`≈ ${Math.max(1, Math.round(kb / 1024))} MB to download`);
     if (items.length > cube.max3D) warnings.push(`Your GPU allows at most ${cube.max3D} dates; choose coarser sampling.`);
     if (plan.nx * plan.ny * items.length > MAX_VOXELS) warnings.push('Too many cells; reduce the area, the cells per side or the number of dates.');
   }
@@ -207,6 +215,9 @@ async function load(restore = {}) {
   state.pin = null;
   cube.setVolume(vol);
   $('cube-empty').hidden = true;
+  $('overlay-ctl').hidden = false;
+  $('overlay-attr').hidden = false;
+  refreshOverlay();
   initSliders(vol);
   if (restore.crop) applyCrop(restore.crop);
   if (restore.pin) pinCell(restore.pin);
@@ -394,6 +405,47 @@ function setMask(mask) {
 }
 $('mask-all').addEventListener('click', () => setMask(ALL_MASK));
 $('mask-stress').addEventListener('click', () => setMask(STRESS_MASK));
+
+// ---------------------------------------------------------------- map overlay on the top face
+
+const overlayCtl = $('overlay-ctl');
+// Keep clicks on the toggles from orbiting the camera or pinning the cell underneath.
+for (const type of ['pointerdown', 'pointerup', 'pointermove']) overlayCtl.addEventListener(type, (e) => e.stopPropagation());
+const overlayButtons = OVERLAYS.map((o) => {
+  const b = document.createElement('button');
+  b.textContent = o.label;
+  b.title = o.title;
+  b.addEventListener('click', () => {
+    const on = state.overlays.includes(o.id);
+    setOverlays(on ? state.overlays.filter((id) => id !== o.id) : [...state.overlays, o.id]);
+  });
+  overlayCtl.appendChild(b);
+  return b;
+});
+
+function setOverlays(ids) {
+  state.overlays = OVERLAYS.map((o) => o.id).filter((id) => ids.includes(id));
+  overlayButtons.forEach((b, i) => b.setAttribute('aria-pressed', String(state.overlays.includes(OVERLAYS[i].id))));
+  $('overlay-attr').textContent = state.overlays.length ? ATTRIBUTION : '';
+  refreshOverlay();
+  saveHash();
+}
+
+let overlayToken = 0;
+async function refreshOverlay() {
+  const token = ++overlayToken;
+  const vol = state.vol;
+  if (!vol) return;
+  const skip = (err) => { console.warn(err.message); return null; };
+  const on = (id) => state.overlays.includes(id);
+  const [names, roads] = await Promise.all([
+    on('names') ? fetchNames(vol.plan.bbox).catch(skip) : null,
+    on('roads') ? fetchRoads(vol.plan.bbox).catch(skip) : null,
+  ]);
+  if (token !== overlayToken || vol !== state.vol) return;
+  cube.setNames(names);
+  cube.setRoads(roads);
+}
 
 // ---------------------------------------------------------------- hover & pick in the cube
 
@@ -584,6 +636,7 @@ function saveHash() {
     if (state.mask !== ALL_MASK) p.push(['mask', state.mask]);
     if (+$('height').value !== DEFAULT_HEIGHT) p.push(['h', $('height').value]);
     if (current && state.pin) p.push(['pin', `${state.pin.col},${state.pin.row}`]);
+    if (state.overlays.join() !== DEFAULT_OVERLAYS.join()) p.push(['ov', state.overlays.join(',') || 'none']);
     history.replaceState(null, '', `#${p.map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`).join('&')}`);
   }, 250);
 }
@@ -599,6 +652,7 @@ function restoreFromHash() {
   }
   if (p.get('h')) { $('height').value = p.get('h'); cube.setTimeHeight(+p.get('h')); }
   if (p.get('mask')) setMask(+p.get('mask') & ALL_MASK);
+  setOverlays(p.has('ov') ? p.get('ov').split(',') : DEFAULT_OVERLAYS);
   const bbox = nums('bbox', 4);
   if (!bbox) { scheduleInfo(); return; }
   setBbox({ e0: bbox[0], n0: bbox[1], e1: bbox[2], n1: bbox[3] }, { fit: true });

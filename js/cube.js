@@ -170,7 +170,16 @@ export class Cube {
     this.pinLine.renderOrder = 10;
     for (const o of [this.outline, this.cropOutline, this.pinLine]) { o.visible = false; this.scene.add(o); }
 
+    // Roads image lying on the top face of the crop box; names are CSS labels (see setNames).
+    this.roads = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+    );
+    this.roads.visible = false;
+    this.scene.add(this.roads);
+
     this.timeLabels = [];
+    this.nameLabels = [];
     this.cornerLabels = [label('corner', ''), label('corner', ''), label('north', 'N ↑')];
     this.topLabel = label('top', '');
     for (const l of [...this.cornerLabels, this.topLabel]) { l.visible = false; this.scene.add(l); }
@@ -249,6 +258,8 @@ export class Cube {
     this.hover = null;
     this.crop = null;
     this.setPin(null);
+    this.setRoads(null);
+    this.setNames(null);
     this.applyScale();
     this.setCrop({ c0: 0, c1: vol.nx, r0: 0, r1: vol.ny, t0: 0, t1: vol.nt });
   }
@@ -285,7 +296,56 @@ export class Cube {
     this.cropOutline.scale.set(Math.abs(b.x - a.x), Math.abs(b.y - a.y), Math.abs(b.z - a.z));
     this.topLabel.inner.textContent = `▲ ${this.vol.dates[crop.t1 - 1]}`;
     this.updatePinLine();
+    this.updateRoads();
     this.requestRender();
+  }
+
+  // Name labels on the top face: [{ name, kind, e, n }] in priority order, or null to clear.
+  setNames(list) {
+    for (const l of this.nameLabels) this.scene.remove(l);
+    this.nameLabels = [];
+    if (list && this.vol) {
+      const { bbox, cell } = this.vol.plan;
+      this.nameLabels = list.map((d) => {
+        const l = label(`name ${d.kind}`, d.name);
+        l.col = (d.e - bbox.e0) / cell;
+        l.row = (bbox.n1 - d.n) / cell;
+        l.halfWidth = d.name.length * 3.3 + 8; // estimated for 11px text; measuring forces layout
+        this.scene.add(l);
+        return l;
+      });
+    }
+    this.requestRender();
+  }
+
+  // canvas covers the full volume bbox (north up); null removes the roads.
+  setRoads(canvas) {
+    const mat = this.roads.material;
+    mat.map?.dispose();
+    mat.map = null;
+    if (canvas) {
+      mat.map = new THREE.CanvasTexture(canvas);
+      mat.map.colorSpace = THREE.SRGBColorSpace;
+      mat.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    }
+    mat.needsUpdate = true;
+    this.roads.visible = Boolean(canvas && this.vol);
+    this.updateRoads();
+    this.requestRender();
+  }
+
+  // Fit the sheet to the crop box top and show only the cropped part of the image.
+  updateRoads() {
+    const map = this.roads.material.map;
+    if (!map || !this.vol || !this.crop) return;
+    const { nx, ny } = this.vol;
+    const { c0, c1, r0, r1, t1 } = this.crop;
+    const a = this.voxToWorld(new THREE.Vector3(c0, r0, t1));
+    const b = this.voxToWorld(new THREE.Vector3(c1, r1, t1));
+    this.roads.position.set((a.x + b.x) / 2, a.y + 0.002, (a.z + b.z) / 2);
+    this.roads.scale.set(b.x - a.x, 1, b.z - a.z);
+    map.repeat.set((c1 - c0) / nx, (r1 - r0) / ny);
+    map.offset.set(c0 / nx, 1 - r1 / ny);
   }
 
   setMask(mask) {
@@ -341,6 +401,22 @@ export class Cube {
     this.cornerLabels[0].position.copy(this.voxToWorld(new THREE.Vector3(0, ny, 0)));
     this.cornerLabels[1].position.copy(this.voxToWorld(new THREE.Vector3(nx, 0, 0)));
     this.cornerLabels[2].position.copy(this.voxToWorld(new THREE.Vector3(nx / 2, -0.06 * Math.max(nx, ny), this.vol.nt)));
+
+    // Names ride on the top face. Place them greedily in priority order and skip any that would
+    // overlap a label already placed, so zooming in reveals more names.
+    const halfW = this.container.clientWidth / 2, halfH = this.container.clientHeight / 2;
+    const placed = [];
+    for (const l of this.nameLabels) {
+      l.visible = false;
+      if (l.col < c0 || l.col > c1 || l.row < r0 || l.row > r1) continue;
+      l.position.copy(this.voxToWorld(new THREE.Vector3(l.col, l.row, t1)));
+      const p = l.position.clone().project(this.camera);
+      if (p.z > 1) continue;
+      const x = (p.x + 1) * halfW, y = (1 - p.y) * halfH;
+      if (placed.some((q) => Math.abs(q.x - x) < q.w + l.halfWidth && Math.abs(q.y - y) < 16)) continue;
+      placed.push({ x, y, w: l.halfWidth });
+      l.visible = true;
+    }
   }
 
   // CPU twin of the shader's traversal: the first visible voxel under the pointer, or null.
