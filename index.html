@@ -157,6 +157,7 @@
 
   footer { margin-top: 18px; color: var(--muted); font-size: 11px; }
   footer a { color: inherit; }
+  footer .feedback { margin: 8px 0 0; color: var(--ink-2); font-size: 12px; }
 
   /* Main: cube + charts */
   main { display: grid; grid-template-rows: minmax(0, 1fr) 270px; min-width: 0; }
@@ -264,14 +265,14 @@
           <option value="">Examples…</option>
         </select>
       </div>
-      <label class="field" style="margin-top:8px">Current VHI overlay
-        <input id="overlay" class="plain" type="range" min="0" max="1" step="0.05" value="0.7">
+      <label class="field" style="margin-top:8px">Forest overlay (swissTLM3D)
+        <input id="overlay" class="plain" type="range" autocomplete="off" min="0" max="1" step="0.05" value="0.7">
       </label>
       <div class="grid2">
-        <label>E min <input id="e0" type="number" step="10"></label>
-        <label>E max <input id="e1" type="number" step="10"></label>
-        <label>N min <input id="n0" type="number" step="10"></label>
-        <label>N max <input id="n1" type="number" step="10"></label>
+        <label>E min <input id="e0" type="number" step="10" autocomplete="off"></label>
+        <label>E max <input id="e1" type="number" step="10" autocomplete="off"></label>
+        <label>N min <input id="n0" type="number" step="10" autocomplete="off"></label>
+        <label>N max <input id="n1" type="number" step="10" autocomplete="off"></label>
       </div>
       <p class="info" id="area-info">Draw a rectangle on the map or pick an example.</p>
     </section>
@@ -279,10 +280,10 @@
     <section>
       <h2>2 · Period</h2>
       <div class="grid2">
-        <label>From <input id="from" type="date" min="2017-04-03" value="2026-04-01"></label>
-        <label>To <input id="to" type="date" min="2017-04-03" value="2026-10-31"></label>
+        <label>From <input id="from" type="date" min="2017-04-03" value="2026-04-01" autocomplete="off"></label>
+        <label>To <input id="to" type="date" min="2017-04-03" value="2026-10-31" autocomplete="off"></label>
         <label>Sampling
-          <select id="step">
+          <select id="step" autocomplete="off">
             <option value="all">Every available day</option>
             <option value="week" selected>Weekly</option>
             <option value="2week">Every 2 weeks</option>
@@ -290,14 +291,14 @@
           </select>
         </label>
         <label>Max cells per side
-          <select id="px">
+          <select id="px" autocomplete="off">
             <option value="256">256</option>
             <option value="512" selected>512</option>
             <option value="1024">1024</option>
           </select>
         </label>
         <label style="grid-column: span 2">Collection
-          <select id="collection">
+          <select id="collection" autocomplete="off">
             <option value="v100" selected>swisseo_vhi_v100 (2017-04 → today, ends Dec 2026)</option>
             <option value="v200">swisseo_vhi_v200 (successor, from Oct 2026)</option>
           </select>
@@ -324,7 +325,7 @@
       <div class="dual" id="slice-n"><div class="dual-head"><span>South → North</span><output></output></div><div class="dual-track"><div class="dual-fill"></div><input type="range" aria-label="South edge"><input type="range" aria-label="North edge"></div></div>
       <div class="dual" id="slice-t"><div class="dual-head"><span>Time</span><output></output></div><div class="dual-track"><div class="dual-fill"></div><input type="range" aria-label="First date"><input type="range" aria-label="Last date (top face)"></div></div>
       <label class="field" style="margin-top:10px">Time axis height
-        <input id="height" class="plain" type="range" min="0.15" max="2" step="0.05" value="0.7">
+        <input id="height" class="plain" type="range" autocomplete="off" min="0.15" max="2" step="0.05" value="0.7">
       </label>
       <div class="row">
         <button id="play" aria-pressed="false">▶ Play</button>
@@ -339,6 +340,9 @@
       Data: <a href="https://www.swisstopo.admin.ch/en/satelliteimage-swisseo-vhi" target="_blank" rel="noopener">swisstopo swissEO VHI</a>
       via <a href="https://data.geo.admin.ch/browser/index.html#/collections/ch.swisstopo.swisseo_vhi_v100" target="_blank" rel="noopener">STAC</a>.
       Contains modified Copernicus Sentinel data. Read directly from the Cloud Optimized GeoTIFFs in your browser.
+      <p class="feedback">Experimental. Source code and feedback:
+        <a href="https://github.com/davidoesch/VegetationsStress3DViews" target="_blank" rel="noopener">GitHub repository</a> ·
+        <a href="https://github.com/davidoesch/VegetationsStress3DViews/issues/new" target="_blank" rel="noopener">report an issue or idea</a></p>
     </footer>
   </aside>
 

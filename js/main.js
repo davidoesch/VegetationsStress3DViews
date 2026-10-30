@@ -46,8 +46,9 @@ const map = L.map('map', { minZoom: 7, maxBounds: [[45.2, 5.0], [48.4, 11.4]] })
 L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-grau/default/current/3857/{z}/{x}/{y}.jpeg', {
   maxZoom: 19, maxNativeZoom: 18, attribution: '© swisstopo',
 }).addTo(map);
-const overlay = L.tileLayer.wms('https://wms.geo.admin.ch/', {
-  layers: 'ch.swisstopo.swisseo_vhi_v100', format: 'image/png', transparent: true, version: '1.3.0', opacity: 0.7,
+// swissTLM3D forest areas, to see where the forest is when drawing an area.
+const overlay = L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swisstlm3d-wald/default/current/3857/{z}/{x}/{y}.png', {
+  maxZoom: 19, maxNativeZoom: 17, opacity: 0.7, attribution: 'swissTLM3D',
 }).addTo(map);
 $('overlay').addEventListener('input', (e) => overlay.setOpacity(+e.target.value));
 

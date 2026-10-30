@@ -63,7 +63,7 @@ The site is plain HTML and JavaScript ES modules, with no build step and no back
 3. **Build the cube:** the tiles are stacked into a byte volume, which is uploaded to the GPU as a 3D texture.
 4. **Draw it:** a [three.js](https://threejs.org/) shader walks each view ray through the voxels and draws the first visible one. Cropping and class filtering are simply parameters of that shader. Hover and click use the same traversal in JavaScript.
 5. **Overlay:** names are HTML labels that always face the viewer and are thinned so they don't overlap; zooming in reveals more. Roads are an image laid on the top face.
-6. **Area picker:** a [Leaflet](https://leafletjs.com/) map with swisstopo base maps; [proj4js](https://proj4js.org/) converts coordinates to LV95.
+6. **Area picker:** a [Leaflet](https://leafletjs.com/) map with the swisstopo grey map and the swissTLM3D forest layer, to show where the forest is; [proj4js](https://proj4js.org/) converts coordinates to LV95.
 
 | File | Purpose |
 |---|---|
@@ -110,6 +110,10 @@ A browser with WebGL 2 is required.
 ## Deployment
 
 Every push to `main` publishes the site to GitHub Pages via [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+
+## Feedback
+
+This is an experiment, so feedback is very welcome: [open an issue](https://github.com/davidoesch/VegetationsStress3DViews/issues/new) with ideas, questions or bugs. The page footer links here too.
 
 ## License
 
