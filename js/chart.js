@@ -203,8 +203,10 @@ export function renderAreaChart(host, { dates, shares, forest, cursor, onPick })
   const svg = el('svg', { width: W, height: H, class: 'chart' }, host);
   const scale = timeScale(dates, x0, x1);
   const xs = scale.ts.map(scale.x);
-  let spacing = x1 - x0;
-  for (let i = 1; i < xs.length; i++) spacing = Math.min(spacing, xs[i] - xs[i - 1]);
+  // Median gap between dates: sampling can put two dates a few days apart, and the smallest gap
+  // would shrink every column to a hairline.
+  const gaps = xs.slice(1).map((x, i) => x - xs[i]).sort((a, b) => a - b);
+  const spacing = gaps.length ? gaps[gaps.length >> 1] : x1 - x0;
   const w = Math.max(1, Math.min(24, spacing - GAP));
 
   for (let p = 0; p <= 100; p += 25) {

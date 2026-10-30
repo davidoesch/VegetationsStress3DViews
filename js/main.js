@@ -319,6 +319,9 @@ function initSliders(vol) {
 function setCrop(crop) {
   const vol = state.vol;
   cube.setCrop(crop);
+  // The cell under a resting pointer may just have been cut away.
+  cubeTip.hidden = true;
+  if (cube.hover) cube.setHover(null);
   const { bbox, cell } = vol.plan;
   sliders.e.out.textContent = `${fmt(bbox.e0 + crop.c0 * cell)} – ${fmt(bbox.e0 + crop.c1 * cell)}`;
   sliders.n.out.textContent = `${fmt(bbox.n1 - crop.r1 * cell)} – ${fmt(bbox.n1 - crop.r0 * cell)}`;
@@ -409,8 +412,10 @@ $('mask-stress').addEventListener('click', () => setMask(STRESS_MASK));
 // ---------------------------------------------------------------- map overlay on the top face
 
 const overlayCtl = $('overlay-ctl');
-// Keep clicks on the toggles from orbiting the camera or pinning the cell underneath.
-for (const type of ['pointerdown', 'pointerup', 'pointermove']) overlayCtl.addEventListener(type, (e) => e.stopPropagation());
+// Keep clicks on controls over the cube from orbiting the camera or pinning the cell underneath.
+for (const el of [overlayCtl, $('cube-toolbar')]) {
+  for (const type of ['pointerdown', 'pointerup', 'pointermove']) el.addEventListener(type, (e) => e.stopPropagation());
+}
 const overlayButtons = OVERLAYS.map((o) => {
   const b = document.createElement('button');
   b.textContent = o.label;
@@ -487,15 +492,19 @@ function fillTip(tip, title, row, foot) {
   tip.append(head, line, f);
 }
 
+// A press counts as a click only if the pointer never strayed while down, so an orbit drag that
+// ends where it started does not pin a cell.
 let pointer = null, hoverFrame = 0, downAt = null;
 cubeEl.addEventListener('pointermove', (e) => {
   pointer = e;
+  if (downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) downAt = null;
   if (!hoverFrame) hoverFrame = requestAnimationFrame(updateHover);
 });
 cubeEl.addEventListener('pointerleave', () => { pointer = null; cubeTip.hidden = true; cube.setHover(null); });
 cubeEl.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
 cubeEl.addEventListener('pointerup', (e) => {
-  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return;
+  if (!downAt) return;
+  downAt = null;
   const hit = cube.pick(e.clientX, e.clientY);
   if (hit) pinCell(hit);
 });
@@ -620,26 +629,41 @@ $('csv').addEventListener('click', () => {
 let hashTimer = 0;
 function saveHash() {
   clearTimeout(hashTimer);
-  hashTimer = setTimeout(() => {
-    const p = [
-      ['c', $('collection').value], ['from', $('from').value], ['to', $('to').value],
-      ['step', $('step').value], ['px', $('px').value],
-    ];
-    const b = state.bbox;
-    if (b) p.push(['bbox', [b.e0, b.n0, b.e1, b.n1].join(',')]);
-    // Crop and pin are grid indices: only meaningful while the loaded cube matches the inputs.
-    const plan = currentPlan();
-    const current = state.vol && plan && JSON.stringify(plan.bbox) === JSON.stringify(state.vol.plan.bbox)
-      && plan.cell === state.vol.plan.cell;
-    const c = current && cube.crop;
-    if (c) p.push(['crop', [c.c0, c.c1, c.r0, c.r1, c.t0, c.t1].join(',')]);
-    if (state.mask !== ALL_MASK) p.push(['mask', state.mask]);
-    if (+$('height').value !== DEFAULT_HEIGHT) p.push(['h', $('height').value]);
-    if (current && state.pin) p.push(['pin', `${state.pin.col},${state.pin.row}`]);
-    if (state.overlays.join() !== DEFAULT_OVERLAYS.join()) p.push(['ov', state.overlays.join(',') || 'none']);
-    history.replaceState(null, '', `#${p.map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`).join('&')}`);
-  }, 250);
+  hashTimer = setTimeout(writeHash, 250);
 }
+
+function writeHash() {
+  clearTimeout(hashTimer);
+  const p = [
+    ['c', $('collection').value], ['from', $('from').value], ['to', $('to').value],
+    ['step', $('step').value], ['px', $('px').value],
+  ];
+  const b = state.bbox;
+  if (b) p.push(['bbox', [b.e0, b.n0, b.e1, b.n1].join(',')]);
+  // Crop and pin are grid indices: only meaningful while the loaded cube matches the inputs.
+  const plan = currentPlan();
+  const current = state.vol && plan && JSON.stringify(plan.bbox) === JSON.stringify(state.vol.plan.bbox)
+    && plan.cell === state.vol.plan.cell;
+  const c = current && cube.crop;
+  if (c) p.push(['crop', [c.c0, c.c1, c.r0, c.r1, c.t0, c.t1].join(',')]);
+  if (state.mask !== ALL_MASK) p.push(['mask', state.mask]);
+  if (+$('height').value !== DEFAULT_HEIGHT) p.push(['h', $('height').value]);
+  if (current && state.pin) p.push(['pin', `${state.pin.col},${state.pin.row}`]);
+  if (state.overlays.join() !== DEFAULT_OVERLAYS.join()) p.push(['ov', state.overlays.join(',') || 'none']);
+  history.replaceState(null, '', `#${p.map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`).join('&')}`);
+}
+
+$('copy-link').addEventListener('click', async () => {
+  writeHash();
+  const text = $('copy-link').querySelector('span');
+  try {
+    await navigator.clipboard.writeText(location.href);
+    text.textContent = 'Link copied ✓';
+  } catch {
+    window.prompt('Copy this link:', location.href);
+  }
+  setTimeout(() => { text.textContent = 'Copy link'; }, 1800);
+});
 
 function restoreFromHash() {
   const p = new URLSearchParams(location.hash.slice(1));

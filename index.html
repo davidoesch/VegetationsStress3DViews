@@ -193,6 +193,11 @@
     background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px; font-size: 12px;
   }
   .overlay-ctl[hidden] { display: none; }
+  .cube-toolbar { position: absolute; top: 12px; left: 12px; z-index: 4; }
+  .cube-toolbar button {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 10px;
+    background: var(--surface); border-radius: 8px;
+  }
   .overlay-ctl span { color: var(--muted); padding: 0 6px 0 4px; }
   .overlay-ctl button { padding: 3px 9px; border-color: transparent; }
   .overlay-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
@@ -274,8 +279,8 @@
     <section>
       <h2>2 · Period</h2>
       <div class="grid2">
-        <label>From <input id="from" type="date" min="2017-04-03" value="2025-04-01"></label>
-        <label>To <input id="to" type="date" min="2017-04-03" value="2025-10-31"></label>
+        <label>From <input id="from" type="date" min="2017-04-03" value="2026-04-01"></label>
+        <label>To <input id="to" type="date" min="2017-04-03" value="2026-10-31"></label>
         <label>Sampling
           <select id="step">
             <option value="all">Every available day</option>
@@ -341,6 +346,12 @@
     <div class="cube" id="cube">
       <div class="empty" id="cube-empty"><div><strong>No cube loaded</strong>Choose an area and a period, then press “Load cube”.<br>Drag to rotate, scroll to zoom, right-drag to pan. Hover for values, click a cell for its history.</div></div>
       <div class="tip" id="cube-tip" hidden></div>
+      <div class="cube-toolbar" id="cube-toolbar">
+        <button id="copy-link" title="Copy a link to this exact view (area, period, cut, filters, pinned cell)">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.6 2.6 0 013.7 3.7L10.7 8.2M9 11.5l-1.2 1.2a2.6 2.6 0 01-3.7-3.7L5.3 7.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Copy link</span>
+        </button>
+      </div>
       <div class="overlay-ctl" id="overlay-ctl" role="group" aria-label="Map overlay on the top face" hidden><span>Overlay</span></div>
       <div class="overlay-attr" id="overlay-attr" hidden></div>
     </div>

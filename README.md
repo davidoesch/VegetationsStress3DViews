@@ -4,6 +4,10 @@
 
 **Live demo:** https://davidoesch.github.io/VegetationsStress3DViews/
 
+![Showcase: Ittigen, January 2021 to October 2026. Moving the top face through time, the 2023 summer drought, picking a cell whose VHI stays extremely stressed from early 2022, vertical slices, the area history, the stress-only filter and Copy link](docs/ittigen-showcase.gif)
+
+*Ittigen, January 2021 to October 2026, sampled every two weeks. [Open this view live](https://davidoesch.github.io/VegetationsStress3DViews/#c=v100&from=2021-01-01&to=2026-10-25&step=2week&px=512&bbox=2603040,1203270,2603880,1204030&h=0.8&pin=67,58).*
+
 Pick any forest area in Switzerland and a period. The page stacks the daily swissEO **Vegetation Health Index (VHI)** maps of that area into a space–time cube that you can rotate, slice and filter:
 
 - **east × north × time:** the oldest date is at the bottom and the newest at the top; non-forest cells are empty;
@@ -12,7 +16,9 @@ Pick any forest area in Switzerland and a period. The page stacks the daily swis
 - **pixel history:** click any cell to get its VHI time series, and jump the cube to any date from the chart;
 - **area summary:** the share of forest cells in each class, per date;
 - **orientation overlay:** place, area and forest names, plus roads and forest tracks, on the top face (toggle at the top right of the cube);
-- **share:** the URL keeps the area, period, cut, filter, overlay and pinned cell, so a link reopens the same view.
+- **share:** the URL keeps the area, period, cut, filter, overlay and pinned cell; **Copy link** (top left of the cube) puts that link on the clipboard, so others open the same view.
+
+The viewer starts with the period 1 April – 31 October 2026.
 
 **Examples** (weekly, April–October 2025):
 [La Neuville](https://davidoesch.github.io/VegetationsStress3DViews/#c=v100&from=2025-04-01&to=2025-10-31&step=week&px=512&bbox=2570570,1212120,2573150,1214400) ·
